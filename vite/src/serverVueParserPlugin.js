@@ -37,9 +37,22 @@ function vueParserPlugin({ app, root }) {
                 ctx.body = code
             } else if (ctx.query.type === 'template') {
                 ctx.type = 'js'
-                let content = descriptor.template.content
-                const { code } = compileTemplate({ source: content }) // 将vue当中的模板转化成render函数
-                ctx.body = code
+                const { code } = compileTemplate({
+                    source: descriptor.template.content,
+                    filename: path.basename(filePath),
+                    id: 'component',
+                    // 👇 关键配置
+                    compilerOptions: {
+                        mode: 'module', // 生成 ES Module 语法
+                    },
+                    transformAssetUrls: false,
+                })
+
+                // 🔥 手动注入 import
+                ctx.body = `
+                import { h, toDisplayString } from 'vue'
+                ${code}
+                 `.trim()
             }
         }
     })

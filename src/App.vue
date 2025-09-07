@@ -4,15 +4,22 @@
   <h1>You did it!</h1>
 </template>
 
-<script setup>
-import { ref } from 'vue' 
-const a = ref(1)
-const addA = () => {
-  a.value ++
+<script>
+export default {
+  data() {
+    return {
+      a: 1  // 在 Vue 2 中，data 返回的对象就是响应式的
+    }
+  },
+  methods: {
+    addA() {
+      this.a++  // 使用 this.a 访问 data 中的变量
+    }
+  },
+  created() {
+    console.log(this.a)  // Vue 2 中访问 data 要加 this
+  }
 }
-console.log(a.value)
 </script>
-
-
 
 <style scoped></style>
