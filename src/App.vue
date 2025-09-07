@@ -1,7 +1,7 @@
 <template>
   <div>{{ a }}</div>
   <button @click="addA">ADD</button>
-  <h1>You did it!</h1>
+  <h1>You did it</h1>
 </template>
 
 <script>
