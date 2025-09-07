@@ -31,10 +31,9 @@ function moduleRewritePlugin({ app, root }) {
         if (ctx.body && ctx.response.is('js')) {
             let r = await readBody(ctx.body)
             const result = rewriteImports(r)
-            console.log(result)
             ctx.body = result
         }
     })
 }
 
-module.exports = moduleRewritePlugin
+exports.moduleRewritePlugin = moduleRewritePlugin
