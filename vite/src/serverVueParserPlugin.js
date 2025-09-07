@@ -17,7 +17,10 @@ function vueParserPlugin({ app, root }) {
                 let code = ''
                 // setup
                 if (descriptor.scriptSetup) {
-                    const compiledScript = compileScript(descriptor, { id: 'component' }) // id 必须传
+                    const compiledScript = compileScript(descriptor, { 
+                        id: 'component',
+                        sourceMap: true,                        
+                     }) // id 必须传
                     code += `\n${compiledScript.content}` // 已包含 export default { ... }
                     code = code.replace(/export default/, 'const __script =') // 替换为赋值
                 }
@@ -26,7 +29,7 @@ function vueParserPlugin({ app, root }) {
                     let content = descriptor.script.content
                     code += content.replace(/((?:^|\n|;)\s*)export default/, '$1const __script=')
                 }
-                // template
+                // template 在这注入 Source Map
                 if (descriptor.template) {
                     const requestPath = ctx.path + '?type=template'
                     code += `\nimport { render as __render } from "${requestPath}"`
@@ -37,22 +40,23 @@ function vueParserPlugin({ app, root }) {
                 ctx.body = code
             } else if (ctx.query.type === 'template') {
                 ctx.type = 'js'
-                const { code } = compileTemplate({
+                const { code, map } = compileTemplate({
                     source: descriptor.template.content,
                     filename: path.basename(filePath),
                     id: 'component',
-                    // 👇 关键配置
                     compilerOptions: {
-                        mode: 'module', // 生成 ES Module 语法
+                        mode: 'module',
                     },
                     transformAssetUrls: false,
+                    sourceMap: true,
                 })
-
-                // 🔥 手动注入 import
+                const base64Map = Buffer.from(JSON.stringify(map)).toString('base64')
                 ctx.body = `
                 import { h, toDisplayString } from 'vue'
-                ${code}
+                ${code} 
+                //# sourceMappingURL=data:application/json;base64,${base64Map}
                  `.trim()
+                // 进行sourceMap注入 保存原有的sourceMap
             }
         }
     })
