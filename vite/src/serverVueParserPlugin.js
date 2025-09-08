@@ -1,4 +1,5 @@
 const path = require('path')
+const { sendError } = require('./serverHMRPlugin')
 const fs = require('fs').promises
 
 function vueParserPlugin({ app, root }) {
@@ -17,10 +18,10 @@ function vueParserPlugin({ app, root }) {
                 let code = ''
                 // setup
                 if (descriptor.scriptSetup) {
-                    const compiledScript = compileScript(descriptor, { 
+                    const compiledScript = compileScript(descriptor, {
                         id: 'component',
-                        sourceMap: true,                        
-                     }) // id 必须传
+                        sourceMap: true,
+                    }) // id 必须传
                     code += `\n${compiledScript.content}` // 已包含 export default { ... }
                     code = code.replace(/export default/, 'const __script =') // 替换为赋值
                 }
@@ -39,23 +40,31 @@ function vueParserPlugin({ app, root }) {
                 ctx.type = 'js'
                 ctx.body = code
             } else if (ctx.query.type === 'template') {
-                ctx.type = 'js'
-                const { code, map } = compileTemplate({
-                    source: descriptor.template.content,
-                    filename: path.basename(filePath),
-                    id: 'component',
-                    compilerOptions: {
-                        mode: 'module',
-                    },
-                    transformAssetUrls: false,
-                    sourceMap: true,
-                })
-                const base64Map = Buffer.from(JSON.stringify(map)).toString('base64')
-                ctx.body = `
-                import { h, toDisplayString } from 'vue'
-                ${code} 
-                //# sourceMappingURL=data:application/json;base64,${base64Map}
+                try {
+                    ctx.type = 'js'
+                    const { code, map } = compileTemplate({
+                        source: descriptor.template.content,
+                        filename: path.basename(filePath),
+                        id: 'component',
+                        compilerOptions: {
+                            mode: 'module',
+                        },
+                        transformAssetUrls: false,
+                        sourceMap: true,
+                    })
+                    const base64Map = Buffer.from(JSON.stringify(map)).toString('base64')
+                    ctx.body = `
+                    import { h, toDisplayString } from 'vue'
+                    ${code} 
+                    //# sourceMappingURL=data:application/json;base64,${base64Map}
                  `.trim()
+                } catch (err) {
+                    console.error('Template compiler error:', err)
+                    sendError(err, ctx, path)
+                    ctx.type = 'js'
+                    ctx.body = 'export const render = () => null'
+                }
+
                 // 进行sourceMap注入 保存原有的sourceMap
             }
         }

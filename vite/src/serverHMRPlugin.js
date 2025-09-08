@@ -61,6 +61,27 @@ function sendUpdate() {
     }
 }
 
+function sendError(err, file){
+    if(wsServer){
+
+        const message = {
+            type: 'error',
+            message: err.message,
+            stack: err.stack,
+            file,
+            line: err.loc?.start.line,
+            column: err.loc?.start.column
+        }
+
+        // 发送错误
+        wsServer.clients.forEach((client) => {
+            if(client.readyState === WebSocket.OPEN){
+                client.send(JSON.stringify(message))
+            }
+        })
+    }
+}
+
 function getFileType(file) {
     if (file.endsWith('.vue')) return 'vue'
     if (file.endsWith('.js')) return 'js'
@@ -145,6 +166,27 @@ function hmrPlugin({ app, root }) {
                             console.log('page reload by HMR')
                             location.reload() 
                         }
+                    } else if(data.type === 'error'){
+                        // 创建错误遮罩
+                        const overlay = document.createElement('div')
+                        overlay.style.cssText = \`
+                            position: fixed;
+                            top: 0; left: 0;
+                            width: 100vw; height: 100vh;
+                            background: rgba(255, 0, 0, 0.9);
+                            color: white;
+                            font-family: Consolas, Monaco, 'Courier New', monospace;
+                            padding: 20px;
+                            z-index: 9999;
+                            overflow: auto;
+                        \`
+                        overlay.innerHTML = \`
+                            <h3>🚨 Template Error</h3>
+                            <p><strong>\${data.file}:\${data.line}:\${data.column}</strong></p>
+                            <pre>\${data.message}</pre>
+                            <pre>\${data.stack}</pre>
+                        \`
+                        document.body.appendChild(overlay)
                     }
                 }
                 </script>
@@ -155,4 +197,4 @@ function hmrPlugin({ app, root }) {
     })
 }
 
-module.exports = { hmrPlugin }
+module.exports = { hmrPlugin, sendError }
