@@ -108,7 +108,7 @@ function hmrPlugin({ app, root }) {
         if (fileType === 'vue' || fileType === 'js') {
             sendUpdate('update', { path: file, type: 'js-update' })
         } else if (fileType === 'css') {
-            sendUpdate('update', { path: file, type: 'css-update' })
+            sendUpdate('update', { path: file, type: 'css-update' }) // 对css文件的热更新
         }
     })
 
@@ -121,6 +121,26 @@ function hmrPlugin({ app, root }) {
                 console.warn('Content is not string, cannot inject HMR script')
                 return
             }
+
+            // 注入import.meta.env支持
+            const envScript = `
+                <script>
+                    Object.defineProperty(import.meta, 'env', {
+                        value: {
+                            MODE: 'development',
+                            DEV: true,
+                            PROD: false,
+                            BASE_URL: '/'
+                        }
+                    })
+                </script>
+            `.trim()
+
+            ctx.body = content.replace(
+                /<script type="module">/,
+                `${envScript}\n<script type="module">`
+            )
+
             // 向HTML注入客户端脚本 实现监听
             const script = `
                 <script type="module">

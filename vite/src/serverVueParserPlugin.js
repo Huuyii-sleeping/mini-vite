@@ -25,6 +25,18 @@ function vueParserPlugin({ app, root }) {
                     code += `\n${compiledScript.content}` // 已包含 export default { ... }
                     code = code.replace(/export default/, 'const __script =') // 替换为赋值
                 }
+
+                // 对ts类型的支持
+                if (descriptor.scriptSetup && descriptor.scriptSetup.lang === 'ts') {
+                    const content = descriptor.scriptSetup.content
+                    const { code } =  require('esbuild').transformSync(content, {
+                        loader: 'ts',
+                        target: 'es2020'
+                    })
+                    code += `\n${code}`
+                    code = code.replace(/export default/, 'const __script = ')
+                }
+
                 // componsition
                 if (descriptor.script) {
                     let content = descriptor.script.content
@@ -37,6 +49,14 @@ function vueParserPlugin({ app, root }) {
                     code += `\n__script.render = __render`
                 }
                 code += `\nexport default __script`
+                // 接入对应的HMR支持 实现不刷新组件更新
+                code += `
+                    if(import.meta.hot){
+                        import.meta.accept((newModule) => {
+                            console.log('Component updated')    
+                        })
+                    }   
+                `.trim()
                 ctx.type = 'js'
                 ctx.body = code
             } else if (ctx.query.type === 'template') {
