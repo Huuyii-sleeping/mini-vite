@@ -6,6 +6,7 @@ const { moduleRewritePlugin } = require('./serverModulePlugin')
 const { moduleResolvePlugin } = require('./serverModuleResolve')
 const { vueParserPlugin } = require('./serverVueParserPlugin')
 const { hmrPlugin } = require('./serverHMRPlugin')
+const { prebundlePlugin } = require('./serverPrebundlePlugin')
 
 function createServer() {
     let app = new Koa()
@@ -22,6 +23,7 @@ function createServer() {
         moduleResolvePlugin, // 这个的里面可能引入其他文件 也需要进行模块的解析
         vueParserPlugin, // 可能是vue文件 将vue文件进行解析
         hmrPlugin, // 实现热更新的代码
+        prebundlePlugin, // 进行预构建的插件 
         serveStaticPlugin, // 静态服务插件 实现返回文件的功能
     ]
 
