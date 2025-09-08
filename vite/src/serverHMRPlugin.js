@@ -61,8 +61,8 @@ function sendUpdate() {
     }
 }
 
-function sendError(err, file){
-    if(wsServer){
+function sendError(err, file) {
+    if (wsServer) {
 
         const message = {
             type: 'error',
@@ -75,7 +75,7 @@ function sendError(err, file){
 
         // 发送错误
         wsServer.clients.forEach((client) => {
-            if(client.readyState === WebSocket.OPEN){
+            if (client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify(message))
             }
         })
@@ -89,41 +89,44 @@ function getFileType(file) {
     return 'unknown'
 }
 
-function hmrPlugin({ app, root }) {
-    // 创建 WebSocket 服务
-    createHMRServer()
+function hmrPlugin() {
+    return {
+        name: 'hmrPlugin',
+        async configureSever({ app, root }) {
+            // 创建 WebSocket 服务
+            createHMRServer()
 
-    // 监听文件变化 
-    const chokidar = require('chokidar')
-    // 监听真个文章的目录 忽略node_modules(设置监听)
-    const watcher = chokidar.watch(root, {
-        ignored: ['**/node_modules/**'],
-        ignoreInitial: true,
-    })
-    // 文件修改，触发change事件
-    watcher.on('change', async (file) => {
-        const fileType = getFileType(file)
-        console.log(`🔥 File changed: ${file}`)
+            // 监听文件变化 
+            const chokidar = require('chokidar')
+            // 监听真个文章的目录 忽略node_modules(设置监听)
+            const watcher = chokidar.watch(root, {
+                ignored: ['**/node_modules/**'],
+                ignoreInitial: true,
+            })
+            // 文件修改，触发change事件
+            watcher.on('change', async (file) => {
+                const fileType = getFileType(file)
+                console.log(`🔥 File changed: ${file}`)
 
-        if (fileType === 'vue' || fileType === 'js') {
-            sendUpdate('update', { path: file, type: 'js-update' })
-        } else if (fileType === 'css') {
-            sendUpdate('update', { path: file, type: 'css-update' }) // 对css文件的热更新
-        }
-    })
+                if (fileType === 'vue' || fileType === 'js') {
+                    sendUpdate('update', { path: file, type: 'js-update' })
+                } else if (fileType === 'css') {
+                    sendUpdate('update', { path: file, type: 'css-update' }) // 对css文件的热更新
+                }
+            })
 
-    // 注入客户端 HMR 脚本
-    app.use(async (ctx, next) => {
-        await next()
-        if (ctx.response.is('html')) {
-            const content = ctx.body
-            if (typeof content !== 'string') {
-                console.warn('Content is not string, cannot inject HMR script')
-                return
-            }
+            // 注入客户端 HMR 脚本
+            app.use(async (ctx, next) => {
+                await next()
+                if (ctx.response.is('html')) {
+                    const content = ctx.body
+                    if (typeof content !== 'string') {
+                        console.warn('Content is not string, cannot inject HMR script')
+                        return
+                    }
 
-            // 注入import.meta.env支持
-            const envScript = `
+                    // 注入import.meta.env支持
+                    const envScript = `
                 <script>
                     Object.defineProperty(import.meta, 'env', {
                         value: {
@@ -136,13 +139,13 @@ function hmrPlugin({ app, root }) {
                 </script>
             `.trim()
 
-            ctx.body = content.replace(
-                /<script type="module">/,
-                `${envScript}\n<script type="module">`
-            )
+                    ctx.body = content.replace(
+                        /<script type="module">/,
+                        `${envScript}\n<script type="module">`
+                    )
 
-            // 向HTML注入客户端脚本 实现监听
-            const script = `
+                    // 向HTML注入客户端脚本 实现监听
+                    const script = `
                 <script type="module">
                 const ws = new WebSocket('ws://localhost:24678')
 
@@ -211,10 +214,12 @@ function hmrPlugin({ app, root }) {
                 }
                 </script>
             `.trim()
-            // 在ctx当中插入对应的脚本 对请求的数据进行更改
-            ctx.body = content.replace(/<\/head>/, `${script}</head>`)
+                    // 在ctx当中插入对应的脚本 对请求的数据进行更改
+                    ctx.body = content.replace(/<\/head>/, `${script}</head>`)
+                }
+            })
         }
-    })
+    }
 }
 
 module.exports = { hmrPlugin, sendError }
